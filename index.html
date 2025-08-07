@@ -37,39 +37,4 @@
         try {
           const response = await fetch(url);
           const text = await response.text();
-          const json = JSON.parse(text.substring(47).slice(0, -2));
-          const rows = json.table.rows;
-
-          const latestRow = rows.find(r => r.c[0]);
-          if (!latestRow) continue;
-
-          const name = latestRow.c[0].v;
-          const message = `${name} est attendu(e) en ${sheetName}`;
-
-          // Afficher tous les messages
-          messages.push(message);
-
-          // Synthèse vocale si message nouveau
-          if (lastMessages[sheetName] !== message) {
-            lastMessages[sheetName] = message;
-            const speech = new SpeechSynthesisUtterance(message);
-            speech.lang = "fr-FR";
-            window.speechSynthesis.speak(speech);
-          }
-        } catch (error) {
-          console.error(`Erreur pour ${sheetName} :`, error);
-        }
-      }
-
-      if (messages.length === 0) {
-        document.getElementById("message").innerText = "Aucun patient à appeler.";
-      } else {
-        document.getElementById("message").innerText = messages.join("\n");
-      }
-    }
-
-    fetchData();
-    setInterval(fetchData, 10000); // rafraîchissement toutes les 10 secondes
-  </script>
-</body>
-</html>
+          const json = JSON.parse(text.s
