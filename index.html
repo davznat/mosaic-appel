@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Appel Patient - Mosaic Santé</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f4f8;
+      color: #222;
+      text-align: center;
+      padding: 60px;
+    }
+    #message {
+      font-size: 48px;
+      font-weight: bold;
+      margin-top: 50px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📢 Appel des patients - Centre Mosaic Santé</h1>
+  <div id="message">Chargement...</div>
+
+  <script>
+    const spreadsheetId = "1TUthCDtflujLHfihUIhK8-zlrdapwEmM";
+    const sheetName = "MASTER";
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
+
+    let lastMessage = "";
+
+    async function fetchData() {
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        const rows = json.table.rows;
+
+        const latestRow = rows.reverse().find(r => r.c[0] && r.c[1]);
+        if (!latestRow) return;
+
+        const name = latestRow.c[0].v;
+        const salle = latestRow.c[1].v;
+        const message = `${name} est attendu(e) en ${salle}`;
+
+        if (message !== lastMessage) {
+          lastMessage = message;
+          document.getElementById("message").innerText = message;
+
+          const speech = new SpeechSynthesisUtterance(message);
+          speech.lang = "fr-FR";
+          window.speechSynthesis.speak(speech);
+        }
+      } catch (error) {
+        console.error("Erreur :", error);
+        document.getElementById("message").innerText = "Erreur de chargement.";
+      }
+    }
+
+    fetchData();
+    setInterval(fetchData, 10000);
+  </script>
+</body>
+</html>
