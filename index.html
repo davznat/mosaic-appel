@@ -1,82 +1,52 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Appel Patient - Mosaic Santé</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f4f8;
-      color: #222;
-      text-align: center;
-      padding: 60px;
-    }
-    #message {
-      font-size: 48px;
-      font-weight: bold;
-      margin-top: 50px;
-      white-space: pre-line;
-    }
-  </style>
-</head>
-<body>
-  <h1>📢 Appel des patients - Centre Mosaic Santé</h1>
-  <div id="message">Chargement...</div>
+<script>
+  const spreadsheetId = "1TUthCDtflujLHfihUIhK8-zlrdapwEmM";
+  const sheetNames = ["Salle 1", "Salle 2", "Salle 3", "Salle 4", "Salle 5", "Salle 6", "Salle 7", "Salle 8"];
+  let lastTimestamps = {};
 
-  <script>
-    const spreadsheetId = "1TUthCDtflujLHfihUIhK8-zlrdapwEmM";
-    const sheetNames = ["Salle 1", "Salle 2", "Salle 3", "Salle 4", "Salle 5", "Salle 6", "Salle 7", "Salle 8"];
-    let lastMessages = {};
+  async function fetchData() {
+    const messages = [];
+    const now = Date.now();
 
-    async function fetchData() {
-      const messages = [];
-      let dataFound = false;
+    for (const sheetName of sheetNames) {
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
 
-      for (const sheetName of sheetNames) {
-        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+        if (!text.startsWith("/*O_o*/")) continue;
 
-        try {
-          const response = await fetch(url);
-          const text = await response.text();
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        const rows = json.table.rows;
 
-          if (!text.startsWith("/*O_o*/")) {
-            console.error(`Réponse invalide pour ${sheetName}`);
-            continue;
-          }
+        if (rows.length <= 1) continue;
 
-          const json = JSON.parse(text.substring(47).slice(0, -2));
-          const rows = json.table.rows;
+        const patientRow = rows.find((row, index) => index > 0 && row.c[0] && row.c[0].v.trim() !== "");
+        if (!patientRow) continue;
 
-          if (rows.length <= 1) continue;
+        const name = patientRow.c[0].v;
+        const message = `${name} est attendu(e) en ${sheetName}`;
+        messages.push(message);
 
-          const patientRow = rows.find((row, index) => index > 0 && row.c[0] && row.c[0].v.trim() !== "");
+        // Marque temporelle unique par contenu
+        const key = sheetName;
+        const contentKey = `${key}-${name}`;
 
-          if (!patientRow) continue;
-
-          dataFound = true;
-
-          const name = patientRow.c[0].v;
-          const message = `${name} est attendu(e) en ${sheetName}`;
-
-          messages.push(message);
-
-          if (lastMessages[sheetName] !== message) {
-            lastMessages[sheetName] = message;
-            const speech = new SpeechSynthesisUtterance(message);
-            speech.lang = "fr-FR";
-            window.speechSynthesis.speak(speech);
-          }
-        } catch (error) {
-          console.error(`Erreur pour ${sheetName} :`, error);
+        // Lecture si c’est nouveau ou modifié
+        if (lastTimestamps[key] !== contentKey) {
+          lastTimestamps[key] = contentKey;
+          const speech = new SpeechSynthesisUtterance(message);
+          speech.lang = "fr-FR";
+          window.speechSynthesis.speak(speech);
         }
+      } catch (error) {
+        console.error(`Erreur pour ${sheetName} :`, error);
       }
-
-      const output = dataFound ? messages.join("\n") : "Aucun patient à appeler.";
-      document.getElementById("message").innerText = output;
     }
 
-    fetchData();
-    setInterval(fetchData, 10000);
-  </script>
-</body>
-</html>
+    document.getElementById("message").innerText =
+      messages.length > 0 ? messages.join("\n") : "Aucun patient à appeler.";
+  }
+
+  fetchData();
+  setInterval(fetchData, 10000);
+</script>
