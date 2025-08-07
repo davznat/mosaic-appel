@@ -30,6 +30,7 @@
 
     async function fetchData() {
       const messages = [];
+      let dataFound = false;
 
       for (const sheetName of sheetNames) {
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
@@ -37,4 +38,45 @@
         try {
           const response = await fetch(url);
           const text = await response.text();
-          const json = JSON.parse(text.s
+
+          if (!text.startsWith("/*O_o*/")) {
+            console.error(`Réponse invalide pour ${sheetName}`);
+            continue;
+          }
+
+          const json = JSON.parse(text.substring(47).slice(0, -2));
+          const rows = json.table.rows;
+
+          if (rows.length <= 1) continue;
+
+          const patientRow = rows.find((row, index) => index > 0 && row.c[0] && row.c[0].v.trim() !== "");
+
+          if (!patientRow) continue;
+
+          dataFound = true;
+
+          const name = patientRow.c[0].v;
+          const message = `${name} est attendu(e) en ${sheetName}`;
+
+          messages.push(message);
+
+          if (lastMessages[sheetName] !== message) {
+            lastMessages[sheetName] = message;
+            const speech = new SpeechSynthesisUtterance(message);
+            speech.lang = "fr-FR";
+            window.speechSynthesis.speak(speech);
+          }
+        } catch (error) {
+          console.error(`Erreur pour ${sheetName} :`, error);
+        }
+      }
+
+      const output = dataFound ? messages.join("\n") : "Aucun patient à appeler.";
+      document.getElementById("message").innerText = output;
+    }
+
+    fetchData();
+    setInterval(fetchData, 10000);
+  </script>
+</body>
+</html>
